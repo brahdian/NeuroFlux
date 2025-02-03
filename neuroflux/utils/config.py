@@ -1,5 +1,5 @@
 # neuroflux/config.py
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Tuple, Dict, Optional
 import torch
 
@@ -51,11 +51,11 @@ class Config:
     HYPERNET_HIDDEN_DIM: int = 256
     
     # Curriculum Phases
-    PHASE_RATIOS: Dict[str, float] = {
+    PHASE_RATIOS: Dict[str, float] = field(default_factory=lambda: {
         'exploration': 0.3,
         'exploitation': 0.5,
         'consolidation': 0.2
-    }
+    })
     
     # LoRA Settings
     LORA_RANK: int = 8
