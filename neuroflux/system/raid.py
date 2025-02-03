@@ -1,6 +1,11 @@
 # neuroflux/raid.py
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+from typing import List, Optional, Tuple, Dict
+import numpy as np
+from pathlib import Path
+import logging
 import glob
 
 class GF256:
@@ -409,3 +414,143 @@ class EnhancedRAID6(nn.Module):
                 state_dict[key] = compressed
                 
         return state_dict
+
+class RAIDMemory(nn.Module):
+    """
+    Redundant Array of Independent Distributed Memory
+    Implements fault-tolerant memory management with parity-based recovery
+    """
+    def __init__(self, 
+                 num_blocks: int = 8,
+                 parity_slots: int = 2,
+                 compression_threshold: int = 1000,
+                 recovery_timeout: int = 360):
+        super().__init__()
+        self.num_blocks = num_blocks
+        self.parity_slots = parity_slots
+        self.compression_threshold = compression_threshold
+        self.recovery_timeout = recovery_timeout
+        
+        # Initialize memory banks
+        self.data_banks: List[torch.Tensor] = []
+        self.parity_banks: List[torch.Tensor] = []
+        self.error_counts = torch.zeros(num_blocks + parity_slots)
+        
+    def store(self, data: torch.Tensor) -> None:
+        """Store data with redundancy"""
+        # Split data into blocks
+        blocks = self._split_into_blocks(data)
+        
+        # Compute parity
+        parity = self._compute_parity(blocks)
+        
+        # Update storage
+        self.data_banks = blocks
+        self.parity_banks = parity
+        
+    def recover_from_failure(self) -> Optional[torch.Tensor]:
+        """Attempt to recover data after detecting corruption"""
+        try:
+            # Check for corrupted blocks
+            corrupted = self._detect_corruption()
+            if not corrupted:
+                return self._reconstruct_data()
+                
+            # Attempt recovery using parity
+            recovered = self._recover_using_parity(corrupted)
+            if recovered is not None:
+                return self._reconstruct_data()
+                
+        except Exception as e:
+            logging.error(f"Recovery failed: {str(e)}")
+            return None
+            
+    def _split_into_blocks(self, data: torch.Tensor) -> List[torch.Tensor]:
+        """Split input tensor into blocks"""
+        chunks = torch.chunk(data, self.num_blocks)
+        return [chunk.clone() for chunk in chunks]
+        
+    def _compute_parity(self, blocks: List[torch.Tensor]) -> List[torch.Tensor]:
+        """Compute parity blocks for redundancy"""
+        parity = []
+        for i in range(self.parity_slots):
+            p = blocks[0].clone()
+            for block in blocks[1:]:
+                p = p ^ block  # XOR operation for parity
+            parity.append(p)
+        return parity
+        
+    def _detect_corruption(self) -> List[int]:
+        """Detect corrupted blocks using parity checks"""
+        corrupted = []
+        for i, bank in enumerate(self.data_banks):
+            if torch.isnan(bank).any() or torch.isinf(bank).any():
+                corrupted.append(i)
+        return corrupted
+        
+    def _recover_using_parity(self, corrupted: List[int]) -> Optional[List[torch.Tensor]]:
+        """Recover corrupted blocks using parity information"""
+        if len(corrupted) > self.parity_slots:
+            return None  # Too many corrupted blocks
+            
+        recovered = []
+        # Use different parity banks for each corrupted block
+        for idx, i in enumerate(corrupted):
+            # Use corresponding parity bank for recovery
+            recovered_block = self.parity_banks[idx].clone()
+            for j, block in enumerate(self.data_banks):
+                if j != i and not j in corrupted:  # Skip corrupted blocks in recovery
+                    recovered_block = recovered_block ^ block
+            recovered.append(recovered_block)
+            
+        # Update recovered blocks
+        for i, block in zip(corrupted, recovered):
+            self.data_banks[i] = block
+            
+        return self.data_banks
+        
+    def _reconstruct_data(self) -> torch.Tensor:
+        """Reconstruct original data from blocks"""
+        return torch.cat(self.data_banks, dim=0)
+
+    def get_adaptive_checkpoint_interval(self) -> int:
+        """Enhanced adaptive checkpoint interval from Section 4.2"""
+        # Base intervals from whitepaper
+        MIN_INTERVAL = 300  # 5 minutes
+        MAX_INTERVAL = 7200  # 2 hours
+        
+        # Compute error rate with exponential decay
+        recent_errors = self.error_counts.sum().item()
+        total_banks = len(self.error_counts)
+        error_rate = recent_errors / max(1, total_banks)
+        
+        # Dynamic interval based on error rates
+        if error_rate > 0.1:  # High error rate
+            return MIN_INTERVAL
+        elif error_rate > 0.01:  # Moderate error rate
+            return MIN_INTERVAL * 6  # 30 minutes
+        else:  # Low error rate
+            # Gradually increase up to max interval
+            return min(
+                MAX_INTERVAL,
+                MIN_INTERVAL * 24 * (1 - error_rate) / 0.01
+            )
+
+    def update_error_tracking(self):
+        """Update error statistics for adaptive checkpointing"""
+        # Detect errors in current state
+        current_errors = torch.zeros_like(self.error_counts)
+        
+        # Check data banks
+        for i, bank in enumerate(self.data_banks):
+            if torch.isnan(bank).any() or torch.isinf(bank).any():
+                current_errors[i] = 1
+                
+        # Check parity banks
+        for i, bank in enumerate(self.parity_banks):
+            if torch.isnan(bank).any() or torch.isinf(bank).any():
+                current_errors[i + self.num_blocks] = 1
+                
+        # Update error history with exponential decay
+        decay = 0.95
+        self.error_counts = decay * self.error_counts + (1 - decay) * current_errors

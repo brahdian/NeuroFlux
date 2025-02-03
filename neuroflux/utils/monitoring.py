@@ -5,7 +5,7 @@ import time
 import logging
 import threading
 from typing import Dict, List, Optional, Tuple, Union
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
 from collections import deque
 import wandb
@@ -35,6 +35,29 @@ class MonitoringConfig:
     raid_recovery_time_threshold: float = 30.0  # seconds
     network_latency_threshold: float = 1.0  # seconds
     disk_usage_threshold: float = 0.90  # 90% usage
+    
+    # Initialize metrics history with default factory
+    metrics_history: Dict[str, deque] = field(default_factory=lambda: {
+        'gpu_util': deque(maxlen=3600),
+        'gpu_temp': deque(maxlen=3600),
+        'gpu_memory': deque(maxlen=3600),
+        'cpu_util': deque(maxlen=3600),
+        'memory_util': deque(maxlen=3600),
+        'disk_usage': deque(maxlen=3600),
+        'loss': deque(maxlen=3600),
+        'gradient_norm': deque(maxlen=3600),
+        'learning_rate': deque(maxlen=3600),
+        'throughput': deque(maxlen=3600),
+        'expert_utilization': deque(maxlen=3600),
+        'expert_load_balance': deque(maxlen=3600),
+        'routing_entropy': deque(maxlen=3600),
+        'raid_health': deque(maxlen=3600),
+        'recovery_time': deque(maxlen=3600),
+        'parity_check_time': deque(maxlen=3600),
+        'network_latency': deque(maxlen=3600),
+        'bandwidth_usage': deque(maxlen=3600),
+        'sync_time': deque(maxlen=3600)
+    })
 
 class PerformanceMonitor:
     """
@@ -305,9 +328,9 @@ class PerformanceMonitor:
     
     def _update_baselines(self):
         """Update performance baselines"""
-        for metric in self.metrics_history:
-            if len(self.metrics_history[metric]) > 0:
-                self.baselines[metric] = np.mean(list(self.metrics_history[metric]))
+        for metric, values in self.metrics_history.items():
+            if len(values) > 0:
+                self.baselines[metric] = np.mean(list(values))
     
     def _log_metrics(self, metrics: Dict[str, float]):
         """Log current metrics"""

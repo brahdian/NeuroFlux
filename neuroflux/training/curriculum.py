@@ -109,3 +109,25 @@ class EnhancedCurriculumManager:
             'underutilized': underutilized,
             'load_balancing_needed': len(underutilized) > 0
         }
+
+class ExpertUsageTracker:
+    def __init__(self, num_experts):
+        self.num_experts = num_experts
+        self.usage_counts = torch.zeros(num_experts)
+        self.total_calls = 0
+    
+    def update(self, expert_indices, expert_weights):
+        self.total_calls += 1
+        for idx, weight in zip(expert_indices, expert_weights):
+            self.usage_counts[idx] += weight
+        return self.get_stats()
+    
+    def get_stats(self):
+        usage_ratios = self.usage_counts / max(1, self.total_calls)
+        load_imbalance = float(torch.std(usage_ratios))
+        return {'load_imbalance': load_imbalance}
+    
+    def get_underutilized_experts(self):
+        usage_ratios = self.usage_counts / max(1, self.total_calls)
+        mean_usage = torch.mean(usage_ratios)
+        return [i for i, usage in enumerate(usage_ratios) if usage < 0.5 * mean_usage]

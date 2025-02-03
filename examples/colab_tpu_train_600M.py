@@ -18,39 +18,41 @@ import wandb
 from tqdm import tqdm
 from typing import Dict, List, Any
 import numpy as np
+from dataclasses import dataclass
 
 from neuroflux.core.model import SSMXLSTMFusion
 from neuroflux.scaling.scale_manager import NeuroFluxScaler
 from neuroflux.scaling.state_manager import StateManager
 from neuroflux.utils.config import ConfigRegistry
 
+@dataclass
 class TPUConfig:
     """Configuration for 10GB dataset training run"""
     # Model Architecture (600M params)
-    D_MODEL = 1024
-    N_LAYERS = 24
-    N_HEADS = 16
+    D_MODEL: int = 1024
+    N_LAYERS: int = 24
+    N_HEADS: int = 16
     
     # Training
-    BATCH_SIZE = 16  # Reduced batch size for 10GB dataset
-    TOTAL_STEPS = 50_000  # Reduced steps for initial validation
-    LEARNING_RATE = 1e-4
-    WARMUP_STEPS = 1000
-    GRADIENT_ACCUMULATION_STEPS = 4
+    BATCH_SIZE: int = 16
+    TOTAL_STEPS: int = 50_000
+    LEARNING_RATE: float = 1e-4
+    WARMUP_STEPS: int = 1000
+    GRADIENT_ACCUMULATION_STEPS: int = 4
     
     # Scaling
-    SCALE_FACTOR = 1.5
-    MIN_SCALE_STEPS = 5000
-    SCALE_METRIC_THRESHOLD = 0.1
+    SCALE_FACTOR: float = 1.5
+    MIN_SCALE_STEPS: int = 5000
+    SCALE_METRIC_THRESHOLD: float = 0.1
     
     # System
-    LOG_FREQ = 10
-    CHECKPOINT_FREQ = 500
-    MAX_DATASET_SIZE_GB = 10
+    LOG_FREQ: int = 10
+    CHECKPOINT_FREQ: int = 500
+    MAX_DATASET_SIZE_GB: int = 10
     
     # TPU specific
-    NUM_CORES = 8
-    DEVICE = 'xla'
+    NUM_CORES: int = 8
+    DEVICE: str = 'xla'
 
 class TPUTrainer:
     """TPU-optimized trainer with scaling capabilities"""

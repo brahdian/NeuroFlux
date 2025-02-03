@@ -1,5 +1,5 @@
 # neuroflux/config.py
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Tuple, Dict, Optional
 import torch
 
@@ -86,7 +86,7 @@ class Config:
                 'load_balance_factor': 0.01
             },
             'raid': {
-                'checkpoint_freq': 300,  # 5 minutes
+                'checkpoint_freq': 300,
                 'compression_ratio': 0.5
             },
             'trust_region': {
@@ -100,7 +100,7 @@ class Config:
                 'load_balance_factor': 0.1
             },
             'raid': {
-                'checkpoint_freq': 600,  # 10 minutes
+                'checkpoint_freq': 600,
                 'compression_ratio': 0.7
             },
             'trust_region': {
@@ -114,7 +114,7 @@ class Config:
                 'load_balance_factor': 0.2
             },
             'raid': {
-                'checkpoint_freq': 900,  # 15 minutes
+                'checkpoint_freq': 900,
                 'compression_ratio': 0.9
             },
             'trust_region': {
