@@ -1,8 +1,7 @@
 from .core import SSMXLSTMFusion, GRPOMoE, DifferentiableHyperNetwork
-from .training import EnhancedCurriculumManager, CodeGenerationEvaluator
 from .system import RAIDMemory, NeuroFluxDataset, DistributedTrainer
-from .utils import Config, PerformanceMonitor, NeuroFluxVisualizer
-from .deployment import DeploymentManager, DeploymentConfig
+from .training import NeuroFluxTrainer
+from .utils import Config, ConfigRegistry
 
 __version__ = "1.0.0"
 
@@ -12,21 +11,15 @@ __all__ = [
     'GRPOMoE',
     'DifferentiableHyperNetwork',
     
-    # Training
-    'EnhancedCurriculumManager',
-    'CodeGenerationEvaluator',
-    
     # System
     'RAIDMemory',
     'NeuroFluxDataset',
     'DistributedTrainer',
     
+    # Training
+    'NeuroFluxTrainer',
+    
     # Utils
     'Config',
-    'PerformanceMonitor',
-    'NeuroFluxVisualizer',
-    
-    # Deployment
-    'DeploymentManager',
-    'DeploymentConfig'
+    'ConfigRegistry'
 ]
