@@ -1,5 +1,5 @@
 # neuroflux/config.py
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Tuple, Dict, Optional
 import torch
 
@@ -78,7 +78,7 @@ class Config:
     DEVICE: str = "cuda" if torch.cuda.is_available() else "cpu"
     
     # Phase-specific configurations
-    PHASE_CONFIGS: Dict[str, Dict] = {
+    PHASE_CONFIGS: Dict[str, Dict] = field(default_factory=lambda: {
         'exploration': {
             'moe': {
                 'top_k': 4,
@@ -121,7 +121,7 @@ class Config:
                 'radius': 0.1
             }
         }
-    }
+    })
     
     @classmethod
     def from_dict(cls, config_dict: Dict) -> 'Config':
